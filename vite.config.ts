@@ -17,6 +17,8 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Use relative paths for Chrome extension compatibility
+  base: './',
   build: {
     // Chrome extensions can't use inline scripts due to CSP
     // So we need separate entry points for each extension page

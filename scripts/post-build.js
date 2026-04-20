@@ -51,7 +51,7 @@ if (fs.existsSync(sourceIcons)) {
   console.log('  Create icons at: public/icons/icon16.png, icon32.png, icon48.png, icon128.png')
 }
 
-// Fix HTML entry paths (remove src/entries prefix)
+// Fix HTML entry paths (remove src/entries prefix and fix relative paths)
 const entriesDir = path.join(rootDir, 'dist', 'src', 'entries')
 if (fs.existsSync(entriesDir)) {
   try {
@@ -63,7 +63,11 @@ if (fs.existsSync(entriesDir)) {
       if (fs.statSync(entryPath).isDirectory()) {
         const htmlFile = path.join(entryPath, 'index.html')
         if (fs.existsSync(htmlFile)) {
-          fs.copyFileSync(htmlFile, targetPath)
+          // Read the HTML content and fix the paths
+          let htmlContent = fs.readFileSync(htmlFile, 'utf8')
+          // Replace ../../../ with ./ for correct relative paths from dist root
+          htmlContent = htmlContent.replace(/\.\.\/\.\.\/\.\.\//g, './')
+          fs.writeFileSync(targetPath, htmlContent)
         }
       }
     }
