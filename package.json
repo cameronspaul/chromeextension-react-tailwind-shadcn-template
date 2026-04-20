@@ -5,7 +5,7 @@
   "type": "module",
   "description": "A modern Chrome extension built with React, Vite, Tailwind CSS, and shadcn/ui",
   "scripts": {
-    "dev": "vite build --watch",
+    "dev": "node scripts/post-build.js --watch",
     "dev:fast": "vite build && node scripts/post-build.js",
     "build": "tsc -b && vite build && node scripts/post-build.js",
     "build:zip": "npm run build",
