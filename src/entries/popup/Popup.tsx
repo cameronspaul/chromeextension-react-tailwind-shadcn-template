@@ -56,7 +56,7 @@ function Popup() {
       <header className="border-b border-border px-4 py-3 flex items-center justify-between bg-card">
         <div className="flex items-center gap-2">
           <img src="/icons/icon.svg" alt="Extension Icon" className="w-8 h-8" />
-          <span className="font-semibold text-sm">React Extension</span>
+          <span className="font-semibold text-sm">Extension</span>
         </div>
         <div className="flex items-center gap-2">
           <PaymentStatus />
@@ -86,9 +86,9 @@ function Popup() {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-2"
         >
-          <h1 className="text-lg font-semibold">Welcome to Your Extension</h1>
+          <h1 className="text-lg font-semibold">Welcome</h1>
           <p className="text-sm text-muted-foreground">
-            This is a React-based Chrome extension with full feature support.
+            Your extension is ready to use.
           </p>
         </motion.div>
 
@@ -171,13 +171,9 @@ function Popup() {
           </h2>
           <div className="space-y-2">
             {[
-              { name: 'React 19', desc: 'Latest React with concurrent features' },
-              { name: 'Tailwind CSS v4', desc: 'Modern utility-first styling' },
-              { name: 'shadcn/ui', desc: 'Beautiful component primitives' },
-              { name: 'Zustand', desc: 'Simple state management' },
-              { name: 'Chrome APIs', desc: 'Full extension API integration' },
-              { name: 'TypeScript', desc: 'Type-safe development' },
-              { name: 'ExtensionPay', desc: 'Monetization built-in' },
+              { name: 'Feature 1', desc: 'Feature description' },
+              { name: 'Feature 2', desc: 'Feature description' },
+              { name: 'Feature 3', desc: 'Feature description' },
             ].map((feature, index) => (
               <motion.div
                 key={feature.name}
@@ -197,12 +193,6 @@ function Popup() {
         </motion.div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border px-4 py-3 bg-card">
-        <p className="text-xs text-muted-foreground text-center">
-          Built with React + Vite + Tailwind
-        </p>
-      </footer>
     </div>
   )
 }

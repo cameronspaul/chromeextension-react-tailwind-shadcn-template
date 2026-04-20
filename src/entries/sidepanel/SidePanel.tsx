@@ -78,7 +78,7 @@ function SidePanel() {
       <header className="border-b border-border bg-card px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <img src="/icons/icon.svg" alt="Extension Icon" className="w-6 h-6" />
-          <span className="font-semibold">React Extension</span>
+          <span className="font-semibold">Extension</span>
         </div>
         <div className="flex items-center gap-2">
           <PaymentStatus showDetails />
@@ -138,9 +138,9 @@ function SidePanel() {
           {activeTab === 'info' && (
             <motion.div
               key="info"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.2 }}
               className="p-4 space-y-4"
             >
@@ -221,10 +221,6 @@ function SidePanel() {
                     <span className="text-muted-foreground">Manifest</span>
                     <span>V3</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Framework</span>
-                    <span>React 19</span>
-                  </div>
                 </div>
               </div>
 
@@ -246,9 +242,9 @@ function SidePanel() {
           {activeTab === 'tools' && (
             <motion.div
               key="tools"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.2 }}
               className="p-4 space-y-3"
             >
@@ -287,9 +283,9 @@ function SidePanel() {
           {activeTab === 'bookmarks' && (
             <motion.div
               key="bookmarks"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.2 }}
               className="p-4 space-y-3"
             >
@@ -307,13 +303,6 @@ function SidePanel() {
         </AnimatePresence>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border bg-card px-4 py-3">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>React Extension Template</span>
-          <span>v1.0.0</span>
-        </div>
-      </footer>
     </div>
   )
 }
