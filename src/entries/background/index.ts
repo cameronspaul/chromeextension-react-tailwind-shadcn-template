@@ -1,4 +1,5 @@
 import { chromeStorage } from '../../lib/storage'
+import { initExtPayBackground, getExtPay } from '../../lib/extpay'
 
 /**
  * Background Service Worker - Chrome Extension Manifest V3
@@ -8,7 +9,13 @@ import { chromeStorage } from '../../lib/storage'
  * - Message passing between popup, content script, and side panel
  * - Chrome API interactions (tabs, bookmarks, etc.)
  * - State management and persistence
+ * - ExtensionPay payment processing
  */
+
+// Initialize ExtensionPay background handling
+// IMPORTANT: This must be called once when the service worker starts.
+// Do NOT call startBackground() inside callbacks or listeners.
+initExtPayBackground()
 
 // Extension installation/update handler
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -106,6 +113,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           message: message.message,
         })
         return { notificationId }
+      }
+
+      case 'GET_PAYMENT_STATUS': {
+        const extpay = getExtPay()
+        const user = await extpay.getUser()
+        return { user }
+      }
+
+      case 'GET_PAYMENT_PLANS': {
+        const extpay = getExtPay()
+        const plans = await extpay.getPlans()
+        return { plans }
+      }
+
+      case 'OPEN_PAYMENT_PAGE': {
+        const extpay = getExtPay()
+        await extpay.openPaymentPage(message.planNickname)
+        return { success: true }
+      }
+
+      case 'OPEN_TRIAL_PAGE': {
+        const extpay = getExtPay()
+        await extpay.openTrialPage(message.displayText)
+        return { success: true }
+      }
+
+      case 'OPEN_LOGIN_PAGE': {
+        const extpay = getExtPay()
+        await extpay.openLoginPage()
+        return { success: true }
       }
 
       default:

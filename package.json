@@ -16,6 +16,7 @@
     "@tailwindcss/vite": "^4.1.14",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "extpay": "^3.1.2",
     "framer-motion": "^12.24.0",
     "immer": "^10.1.1",
     "lucide-react": "^0.545.0",

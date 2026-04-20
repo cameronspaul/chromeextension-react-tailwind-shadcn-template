@@ -85,11 +85,30 @@ export interface MessageMap {
   
   // Storage sync
   'STORAGE_CHANGED': {
-    payload: { 
+    payload: {
       changes: { [key: string]: chrome.storage.StorageChange }
-      areaName: string 
+      areaName: string
     }
     response: void
+  }
+
+  // Payment operations (ExtensionPay)
+  'GET_PAYMENT_STATUS': {
+    response: { user: unknown }
+  }
+  'GET_PAYMENT_PLANS': {
+    response: { plans: unknown[] }
+  }
+  'OPEN_PAYMENT_PAGE': {
+    payload: { planNickname?: string }
+    response: { success: boolean }
+  }
+  'OPEN_TRIAL_PAGE': {
+    payload: { displayText?: string }
+    response: { success: boolean }
+  }
+  'OPEN_LOGIN_PAGE': {
+    response: { success: boolean }
   }
 }
 
@@ -279,6 +298,27 @@ export function createMessageClient() {
     
     async insertText(text: string) {
       return sendMessageToCurrentTab('INSERT_TEXT', { text })
+    },
+
+    // Payment operations
+    async getPaymentStatus() {
+      return sendMessage('GET_PAYMENT_STATUS')
+    },
+
+    async getPaymentPlans() {
+      return sendMessage('GET_PAYMENT_PLANS')
+    },
+
+    async openPaymentPage(planNickname?: string) {
+      return sendMessage('OPEN_PAYMENT_PAGE', { planNickname })
+    },
+
+    async openTrialPage(displayText?: string) {
+      return sendMessage('OPEN_TRIAL_PAGE', { displayText })
+    },
+
+    async openLoginPage() {
+      return sendMessage('OPEN_LOGIN_PAGE')
     },
   }
 }

@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { useAppStore } from '../../stores/useAppStore'
-import { Sun, Moon, Save, RotateCcw, Info } from 'lucide-react'
+import { initPaymentListeners } from '../../stores/usePaymentStore'
+import { PaymentButton, PaymentStatus } from '../../components/payment'
+import { Sun, Moon, Save, RotateCcw, Info, CreditCard } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { motion } from 'framer-motion'
 
@@ -22,6 +24,12 @@ function Options() {
     if (theme === 'dark') root.classList.add('dark')
     else root.classList.remove('dark')
   }, [theme])
+
+  // Initialize payment listeners
+  useEffect(() => {
+    const cleanup = initPaymentListeners()
+    return cleanup
+  }, [])
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -185,6 +193,42 @@ function Options() {
                 <div className="w-11 h-6 bg-primary rounded-full relative cursor-pointer">
                   <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
                 </div>
+              </div>
+            </div>
+          </motion.section>
+
+          {/* Subscription */}
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="space-y-4"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                <CreditCard className="h-4 w-4" />
+              </div>
+              <h2 className="text-lg font-semibold">Subscription</h2>
+            </div>
+
+            <div className="border border-border rounded-xl bg-card p-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Current Plan</p>
+                  <p className="text-sm text-muted-foreground">
+                    Manage your subscription and billing
+                  </p>
+                </div>
+                <PaymentStatus showDetails />
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <PaymentButton
+                  showTrial
+                  trialText="7-day"
+                  showLogin
+                  className="flex-1"
+                />
               </div>
             </div>
           </motion.section>

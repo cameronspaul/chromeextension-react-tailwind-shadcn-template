@@ -11,7 +11,8 @@
     "sidePanel"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "<all_urls>",
+    "https://extensionpay.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -32,6 +33,11 @@
       "js": ["content.js"],
       "css": ["theme.css"],
       "run_at": "document_end"
+    },
+    {
+      "matches": ["https://extensionpay.com/*"],
+      "js": ["extpay-content.js"],
+      "run_at": "document_start"
     }
   ],
   "options_page": "options.html",

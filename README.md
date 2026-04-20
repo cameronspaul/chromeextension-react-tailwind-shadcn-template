@@ -15,6 +15,7 @@ A modern, production-ready Chrome extension template built with **React 19**, **
 - 🌗 **Theme Support** - Built-in light/dark mode with CSS variables
 - 📝 **TypeScript** - Full type safety throughout
 - 🧪 **Shadow DOM** - Style isolation for injected components
+- 💳 **ExtensionPay** - Built-in monetization with payments, trials & subscriptions
 
 ## Project Structure
 
@@ -26,11 +27,14 @@ A modern, production-ready Chrome extension template built with **React 19**, **
 │   ├── entries/               # Extension entry points
 │   │   ├── background/        # Service worker
 │   │   ├── content/           # Content script
+│   │   ├── extpay-content/    # ExtensionPay content script
 │   │   ├── options/           # Options page
 │   │   ├── popup/             # Popup UI
 │   │   └── sidepanel/         # Side panel
-│   ├── components/ui/         # shadcn/ui components
-│   ├── lib/                   # Utilities (storage, messaging)
+│   ├── components/
+│   │   ├── ui/                # shadcn/ui components
+│   │   └── payment/           # Payment components (ExtPay)
+│   ├── lib/                   # Utilities (storage, messaging, extpay)
 │   ├── stores/                # Zustand stores
 │   └── theme.css              # Tailwind theme configuration
 ├── vite.config.ts            # Vite configuration
@@ -140,6 +144,65 @@ import { chromeStorage } from './lib/storage'
 await chromeStorage.set('settings', { theme: 'dark' })
 const settings = await chromeStorage.get('settings')
 ```
+
+### Monetization (ExtensionPay)
+
+This template includes built-in monetization via [ExtensionPay](https://extensionpay.com). Get started in minutes:
+
+#### 1. Configure Your Extension ID
+
+```typescript
+// src/lib/extpay.ts
+const EXTENSION_PAY_ID = 'your-extension-id'
+```
+
+Get your ID by signing up at [ExtensionPay.com](https://extensionpay.com).
+
+#### 2. Gate Premium Features
+
+```tsx
+import { PaymentGate, PaymentButton } from './components/payment'
+
+function MyComponent() {
+  return (
+    <div>
+      <FreeFeature />
+      
+      <PaymentGate showPaymentButton allowTrial>
+        <PremiumFeature />
+      </PaymentGate>
+    </div>
+  )
+}
+```
+
+#### 3. Show Payment Status
+
+```tsx
+import { PaymentStatus } from './components/payment'
+
+function Header() {
+  return <PaymentStatus showDetails />
+}
+```
+
+#### 4. Check Payment State
+
+```tsx
+import { usePaymentStore } from './stores/usePaymentStore'
+
+function MyComponent() {
+  const { isPaid, user, checkStatus } = usePaymentStore()
+  
+  useEffect(() => {
+    checkStatus()
+  }, [])
+  
+  return <div>{isPaid ? 'Premium' : 'Free'}</div>
+}
+```
+
+For detailed setup, testing, and advanced patterns, see [`docs/EXTPAY.md`](docs/EXTPAY.md).
 
 ### Content Script - Shadow DOM
 

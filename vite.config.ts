@@ -34,6 +34,8 @@ export default defineConfig({
         background: path.resolve(__dirname, 'src/entries/background/index.ts'),
         // Content Script - Injected into web pages
         content: path.resolve(__dirname, 'src/entries/content/index.ts'),
+        // ExtPay Content Script - Required for payment callbacks
+        'extpay-content': path.resolve(__dirname, 'src/entries/extpay-content/index.ts'),
       },
       output: {
         entryFileNames: () => {

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAppStore } from '../../stores/useAppStore'
+import { initPaymentListeners } from '../../stores/usePaymentStore'
+import { PaymentStatus, PaymentButton } from '../../components/payment'
 import { Sun, Moon, Globe, Clock, Bookmark, Settings } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -26,6 +28,12 @@ function SidePanel() {
     if (theme === 'dark') root.classList.add('dark')
     else root.classList.remove('dark')
   }, [theme])
+
+  // Initialize payment listeners
+  useEffect(() => {
+    const cleanup = initPaymentListeners()
+    return cleanup
+  }, [])
 
   // Get current tab info
   useEffect(() => {
@@ -72,7 +80,8 @@ function SidePanel() {
           <img src="/icons/icon.svg" alt="Extension Icon" className="w-6 h-6 rounded-md" />
           <span className="font-semibold">React Extension</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          <PaymentStatus showDetails />
           <motion.button
             onClick={toggleTheme}
             className="p-2 rounded-lg hover:bg-muted transition-colors"
@@ -217,6 +226,19 @@ function SidePanel() {
                     <span>React 19</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Payment */}
+              <div className="border border-border rounded-xl bg-card p-4">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Subscription
+                </h2>
+                <PaymentButton
+                  showTrial
+                  trialText="7-day"
+                  showLogin
+                  className="w-full"
+                />
               </div>
             </motion.div>
           )}
