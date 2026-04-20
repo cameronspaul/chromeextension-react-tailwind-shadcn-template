@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes } from 'react-router-dom'
 import { useAppStore } from './stores/useAppStore'
 function App() {
   const theme = useAppStore((s) => s.theme)
@@ -14,7 +14,6 @@ function App() {
   return (
     <BrowserRouter>
       <Routes />
-    </BrowserRouter>
     </BrowserRouter>
   )
 }

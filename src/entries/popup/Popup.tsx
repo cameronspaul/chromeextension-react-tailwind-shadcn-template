@@ -159,38 +159,6 @@ function Popup() {
           </PaymentGate>
         </motion.div>
 
-        {/* Features Showcase */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="space-y-2"
-        >
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            Features
-          </h2>
-          <div className="space-y-2">
-            {[
-              { name: 'Feature 1', desc: 'Feature description' },
-              { name: 'Feature 2', desc: 'Feature description' },
-              { name: 'Feature 3', desc: 'Feature description' },
-            ].map((feature, index) => (
-              <motion.div
-                key={feature.name}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 + index * 0.05 }}
-                className="flex items-center justify-between p-2 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors"
-              >
-                <div>
-                  <p className="text-sm font-medium">{feature.name}</p>
-                  <p className="text-xs text-muted-foreground">{feature.desc}</p>
-                </div>
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
       </main>
 
     </div>
