@@ -47,9 +47,7 @@ function Popup() {
       {/* Header */}
       <header className="border-b border-border px-4 py-3 flex items-center justify-between bg-card">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">RE</span>
-          </div>
+          <img src="/icons/icon.svg" alt="Extension Icon" className="w-8 h-8 rounded-lg" />
           <span className="font-semibold text-sm">React Extension</span>
         </div>
         <motion.button

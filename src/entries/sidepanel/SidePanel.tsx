@@ -69,9 +69,7 @@ function SidePanel() {
       {/* Header */}
       <header className="border-b border-border bg-card px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">RE</span>
-          </div>
+          <img src="/icons/icon.svg" alt="Extension Icon" className="w-6 h-6 rounded-md" />
           <span className="font-semibold">React Extension</span>
         </div>
         <div className="flex items-center gap-1">

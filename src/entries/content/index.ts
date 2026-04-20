@@ -193,7 +193,17 @@ export function createFloatingUI() {
   // Create a floating button that opens the side panel
   const button = document.createElement('button')
   button.id = 'react-extension-floating-button'
-  button.innerHTML = 'RE'
+  const iconImg = document.createElement('img')
+  iconImg.src = chrome.runtime.getURL('icons/icon48.png')
+  iconImg.alt = 'Extension Icon'
+  iconImg.style.cssText = `
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    pointer-events: none;
+  `
+  button.appendChild(iconImg)
+
   button.style.cssText = `
     position: fixed;
     bottom: 20px;
@@ -202,11 +212,11 @@ export function createFloatingUI() {
     height: 48px;
     border-radius: 50%;
     background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-    color: white;
     border: none;
     cursor: pointer;
-    font-weight: bold;
-    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     z-index: 2147483647;
     transition: transform 0.2s, box-shadow 0.2s;
