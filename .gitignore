@@ -39,6 +39,11 @@ temp/
 .cache/
 .temp/
 
+# Chrome Extension
+extension.zip
+*.crx
+*.pem
+
 # ------------------------------------------------------
 # Environment / Secrets - But keep any "example" ones
 # ------------------------------------------------------

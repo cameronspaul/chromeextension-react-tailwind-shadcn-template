@@ -34,7 +34,7 @@ export default defineConfig({
         content: path.resolve(__dirname, 'src/entries/content/index.ts'),
       },
       output: {
-        entryFileNames: (chunkInfo) => {
+        entryFileNames: () => {
           // Keep entry point names but put them in root
           return '[name].js'
         },

@@ -1,16 +1,315 @@
 # Project Rules
 
-This document defines the coding standards and constraints for this React + Vite + Tailwind CSS + shadcn/ui template.
+This document defines the coding standards and constraints for this **Chrome Extension React Template** built with React + Vite + Tailwind CSS + shadcn/ui.
 
 ## Table of Contents
 
+- [Chrome Extension Architecture](#chrome-extension-architecture)
+- [Entry Points](#entry-points)
+- [State Management](#state-management)
+- [Message Passing](#message-passing)
+- [Storage](#storage)
 - [Styling](#styling)
 - [Components](#components)
-- [State Management](#state-management)
 - [Project Structure](#project-structure)
 - [Imports](#imports)
 - [Icons](#icons)
 - [Animations](#animations)
+- [Build & Development](#build--development)
+
+---
+
+## Chrome Extension Architecture
+
+### 1. Extension Contexts
+
+This template provides **5 extension entry points** that run in separate contexts:
+
+| Context | Location | Purpose | Chrome APIs |
+|---------|----------|---------|-------------|
+| **Popup** | `src/entries/popup/` | Toolbar icon click UI | Limited (via background) |
+| **Options** | `src/entries/options/` | Full settings page | Limited (via background) |
+| **Side Panel** | `src/entries/sidepanel/` | Persistent side UI | Limited (via background) |
+| **Content Script** | `src/entries/content/` | Injected into web pages | `chrome.runtime.sendMessage` |
+| **Background** | `src/entries/background/` | Service worker | **All Chrome APIs** |
+
+### 2. Communication Flow
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────────┐
+│   Popup     │◄───►│              │◄───►│  Content Script │
+│  Options    │     │  Background  │     │  (injected)     │
+│ Side Panel  │     │  (Service    │     │                 │
+└─────────────┘     │   Worker)    │     └─────────────────┘
+                    │              │              │
+                    │  • Storage   │              │
+                    │  • Tabs      │              ▼
+                    │  • Windows   │     ┌─────────────────┐
+                    │  • APIs      │     │   Web Page      │
+                    └──────────────┘     └─────────────────┘
+```
+
+**Rule:** Never call Chrome APIs directly from Popup/Options/Side Panel. Always use the `messageClient` or `sendMessage()` to communicate via the background script.
+
+### 3. Permissions
+
+Add required permissions to `public/manifest.json`:
+
+```json
+{
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs",
+    "sidePanel",
+    "notifications"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ]
+}
+```
+
+**Minimum permissions principle:** Only request permissions your extension actually needs.
+
+---
+
+## Entry Points
+
+### 1. Creating New Entry Points
+
+To add a new extension page:
+
+1. Create folder in `src/entries/<name>/`
+2. Add `index.html` with root div
+3. Add `main.tsx` as entry point
+4. Add `<Name>.tsx` as main component
+5. Update `vite.config.ts` build inputs
+6. Add to `public/manifest.json` if needed
+
+```typescript
+// src/entries/myfeature/main.tsx
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import '../../theme.css'
+import MyFeature from './MyFeature'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <MyFeature />
+  </StrictMode>,
+)
+```
+
+### 2. Popup Specific Rules
+
+- Keep UI compact (recommended: ~380x500px)
+- Always call `window.close()` after opening side panel or options
+- Use `chrome.action` APIs for badge/text updates
+
+```typescript
+// ✅ Good - close popup after navigation
+const openSidePanel = async () => {
+  const currentWindow = await chrome.windows.getCurrent()
+  if (currentWindow.id) {
+    await chrome.sidePanel.open({ windowId: currentWindow.id })
+  }
+  window.close()
+}
+```
+
+### 3. Content Script Specific Rules
+
+- Always use **Shadow DOM** for style isolation
+- Never modify page CSS directly (use injected Shadow DOM)
+- Handle SPA navigation changes with MutationObserver
+
+```typescript
+// ✅ Good - Shadow DOM injection
+import { createShadowRootUI } from './shadow-dom'
+
+const container = document.createElement('div')
+document.body.appendChild(container)
+
+createShadowRootUI(container, 'MyComponent', props)
+```
+
+---
+
+## State Management
+
+### 1. Zustand with Chrome Storage
+
+State is automatically synced across all extension contexts:
+
+```typescript
+import { useAppStore } from '@/stores/useAppStore'
+
+// ✅ Good - state syncs automatically across popup/options/sidepanel
+const { theme, toggleTheme, settings, updateSettings } = useAppStore()
+
+// Update state
+updateSettings({ notifications: false })
+// Automatically synced to all contexts via Chrome Storage
+```
+
+### 2. Store Structure
+
+```typescript
+// src/stores/useAppStore.ts
+interface AppState {
+  // Theme
+  theme: 'light' | 'dark'
+  setTheme: (theme: 'light' | 'dark') => void
+  toggleTheme: () => void
+  
+  // Settings
+  settings: {
+    notifications: boolean
+    autoSync: boolean
+    sidebarOpen: boolean
+  }
+  updateSettings: (settings: Partial<AppState['settings']>) => void
+  
+  // Tab info (synced from content script)
+  currentTab: { url: string; title: string; domain: string } | null
+  setCurrentTab: (tab: AppState['currentTab']) => void
+  
+  // UI state (not persisted)
+  isLoading: boolean
+  setIsLoading: (loading: boolean) => void
+}
+```
+
+### 3. Persisted vs Non-Persisted State
+
+Use `partialize` to control what gets stored:
+
+```typescript
+persist(
+  (set, get) => ({ ... }),
+  {
+    name: 'app-store',
+    partialize: (state) => ({
+      // Only these are persisted to Chrome Storage
+      theme: state.theme,
+      settings: state.settings,
+      // currentTab and isLoading are NOT persisted
+    }),
+  }
+)
+```
+
+---
+
+## Message Passing
+
+### 1. Using messageClient
+
+The `messageClient` provides typed methods for common operations:
+
+```typescript
+import { messageClient } from '@/lib/messaging'
+
+// Tab operations
+const tabInfo = await messageClient.getTabInfo()
+
+// Storage operations
+await messageClient.setStorage('key', value)
+const data = await messageClient.getStorage('key')
+
+// Side panel
+await messageClient.openSidePanel()
+
+// Content script operations
+await messageClient.highlightElement('#selector')
+await messageClient.scrollToElement('#selector')
+const { text } = await messageClient.getSelectedText()
+```
+
+### 2. Custom Messages
+
+For custom operations, use `sendMessage`:
+
+```typescript
+import { sendMessage } from '@/lib/messaging'
+
+// Define message type in messaging.ts first
+const response = await sendMessage('MY_CUSTOM_MESSAGE', {
+  payload: 'data'
+})
+```
+
+### 3. Handling Messages in Background
+
+```typescript
+// src/entries/background/index.ts
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const handleMessage = async () => {
+    switch (message.type) {
+      case 'MY_CUSTOM_MESSAGE':
+        // Do something
+        return { success: true, data: 'result' }
+      
+      default:
+        throw new Error(`Unknown message: ${message.type}`)
+    }
+  }
+  
+  handleMessage()
+    .then(sendResponse)
+    .catch((error) => sendResponse({ error: error.message }))
+  
+  return true // Async response
+})
+```
+
+---
+
+## Storage
+
+### 1. Chrome Storage API
+
+Use the `chromeStorage` wrapper for direct storage access:
+
+```typescript
+import { chromeStorage } from '@/lib/storage'
+
+// Get
+const value = await chromeStorage.get('key')
+
+// Set
+await chromeStorage.set('key', value)
+
+// Remove
+await chromeStorage.remove('key')
+
+// Clear all
+await chromeStorage.clear()
+
+// Listen for changes
+chromeStorage.onChanged((changes) => {
+  console.log('Storage changed:', changes)
+})
+```
+
+### 2. Storage Areas
+
+```typescript
+import { chromeStorage, chromeSyncStorage } from '@/lib/storage'
+
+// Local storage (device-specific)
+await chromeStorage.set('localData', value)
+
+// Sync storage (synced across devices)
+await chromeSyncStorage.set('syncData', value)
+```
+
+### 3. Storage Limits
+
+- `chrome.storage.local`: ~10MB (unlimited with `unlimitedStorage` permission)
+- `chrome.storage.sync`: ~100KB, ~512 items
 
 ---
 
@@ -78,36 +377,28 @@ Use the theme colors via Tailwind classes:
 <div className="border-border">
 ```
 
-### 4. Class Name Ordering
+### 4. Extension-Specific Styling
 
-For consistency, organize Tailwind classes in this order:
-
-1. Layout (display, position, overflow, etc.)
-2. Box Model (width, height, padding, margin, border)
-3. Typography (font, text, line-height)
-4. Visual (background, color, shadow)
-5. Transitions & Animation
-6. Interactivity (cursor, hover, focus, etc.)
-
+**Popup sizing:**
 ```tsx
-// ✅ Good - organized class order
-<button className="flex items-center h-10 px-4 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+// Recommended popup size
+<div className="w-[380px] min-h-[500px] bg-background">
 ```
 
-### 5. Dynamic Classes with `cn()`
-
-Always use the `cn()` utility from `@/lib/utils` for conditional or merged classes:
-
+**Side panel:**
 ```tsx
-import { cn } from "@/lib/utils"
+// Full height side panel
+<div className="h-screen bg-background">
+```
 
-// ✅ Good
-<button className={cn(
-  "flex items-center h-10 px-4",
-  variant === "primary" && "bg-primary",
-  isActive && "ring-2 ring-ring",
-  className
-)}>
+**Content script Shadow DOM:**
+```tsx
+// Use style isolation
+const styleSheet = document.createElement('style')
+styleSheet.textContent = `
+  :host { all: initial; }
+  /* Your isolated styles */
+`
 ```
 
 ---
@@ -130,45 +421,7 @@ function MyCustomModal({ isOpen, onClose, children }) {
 }
 ```
 
-### 2. Component Decision Checklist
-
-Before creating any UI element, go through this checklist:
-
-1. **Is it in shadcn/ui?** → Use `npx shadcn add <component>`
-2. **Is it a combination of shadcn components?** → Compose existing shadcn components
-3. **Only if not available** → Build a custom component using shadcn patterns
-
-```tsx
-// ✅ Good - composing shadcn components
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-
-function UserCard({ user }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{user.name}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Button>View Profile</Button>
-      </CardContent>
-    </Card>
-  )
-}
-
-// ❌ Bad - building from divs when Card exists
-function UserCard({ user }) {
-  return (
-    <div className="rounded-lg border bg-card shadow-sm">
-      <div className="p-6">
-        <h3 className="font-semibold">{user.name}</h3>
-      </div>
-    </div>
-  )
-}
-```
-
-### 4. Add shadcn Components via CLI
+### 2. Add shadcn Components via CLI
 
 **Always use the CLI to add components:**
 
@@ -183,38 +436,11 @@ npx shadcn add card dialog input
 - Consistent patterns
 - Proper Radix UI integration
 
-### 2. Component Location
+### 3. Component Location
 
 - **shadcn/ui components**: `src/components/ui/`
-- **Custom components**: `src/components/`
-- **Page components**: `src/pages/`
-
-### 3. Component Structure
-
-Follow the existing pattern for shadcn/ui components:
-
-```tsx
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
-
-const buttonVariants = cva(
-  "inline-flex items-center justify-center",
-  {
-    variants: {
-      variant: { /* ... */ },
-      size: { /* ... */ },
-    },
-  }
-)
-
-function Button({ className, variant, size, ...props }) {
-  return <Comp className={cn(buttonVariants({ variant, size, className }))} {...props} />
-}
-
-export { Button, buttonVariants }
-```
+- **Custom reusable components**: `src/components/`
+- **Extension entry components**: `src/entries/<name>/<Name>.tsx`
 
 ### 4. Props Interface
 
@@ -230,60 +456,36 @@ interface ButtonProps
 
 ---
 
-## State Management
-
-### 1. Zustand for Global State
-
-Use Zustand for global state management. Stores should be in `src/stores/`:
-
-```tsx
-// src/stores/useAppStore.ts
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-
-interface AppState {
-  theme: 'light' | 'dark'
-  setTheme: (theme: 'light' | 'dark') => void
-  toggleTheme: () => void
-}
-
-export const useAppStore = create<AppState>()(
-  persist(
-    (set, get) => ({
-      theme: 'light',
-      setTheme: (theme) => set({ theme }),
-      toggleTheme: () => set({ theme: get().theme === 'light' ? 'dark' : 'light' }),
-    }),
-    { name: 'app-store' },
-  ),
-)
-```
-
-### 2. Local State with React Hooks
-
-Use React's built-in hooks for local component state:
-
-```tsx
-const [isOpen, setIsOpen] = React.useState(false)
-const [count, setCount] = React.useState(0)
-```
-
----
-
 ## Project Structure
 
 ```
+public/
+├── manifest.json          # Chrome extension manifest
+└── icons/                 # Extension icons (16, 32, 48, 128px)
+
 src/
+├── entries/               # Extension entry points
+│   ├── background/        # Service worker
+│   ├── content/           # Content script
+│   ├── options/           # Settings page
+│   ├── popup/             # Toolbar popup
+│   └── sidepanel/         # Side panel
 ├── components/
-│   ├── ui/           # shadcn/ui components (auto-generated)
-│   └── ...           # Custom reusable components
-├── pages/            # Page/route components
-├── stores/           # Zustand stores
+│   ├── ui/                # shadcn/ui components
+│   └── ...                # Custom components
 ├── lib/
-│   └── utils.ts      # Utility functions (cn, etc.)
-├── theme.css         # Tailwind theme variables (CSS only)
-├── main.tsx          # App entry point
-└── App.tsx           # Root component
+│   ├── messaging.ts       # Message passing system
+│   ├── storage.ts         # Chrome storage adapter
+│   └── utils.ts           # Utility functions (cn, etc.)
+├── stores/
+│   └── useAppStore.ts     # Zustand + Chrome storage
+├── theme.css              # Tailwind theme variables
+└── ...
+
+scripts/
+├── post-build.js          # Post-build file organization
+├── zip-extension.js       # ZIP creation for distribution
+└── clean.js               # Clean build artifacts
 ```
 
 ---
@@ -299,6 +501,7 @@ Always use the `@/` alias for imports:
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAppStore } from "@/stores/useAppStore"
+import { messageClient } from "@/lib/messaging"
 
 // ❌ Bad
 import { Button } from "../components/ui/button"
@@ -319,12 +522,13 @@ Organize imports in this order:
 // ✅ Good
 import * as React from "react"
 import { useState } from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva } from "class-variance-authority"
+import { motion } from "framer-motion"
+import { Sun, Moon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useAppStore } from "@/stores/useAppStore"
+import { messageClient } from "@/lib/messaging"
 
 import type { VariantProps } from "class-variance-authority"
 ```
@@ -338,7 +542,7 @@ import type { VariantProps } from "class-variance-authority"
 The project is configured to use [Lucide React](https://lucide.dev/) for icons:
 
 ```tsx
-import { Sun, Moon, Check, X, ChevronRight } from 'lucide-react'
+import { Sun, Moon, Check, X, ChevronRight, Settings, Globe } from 'lucide-react'
 ```
 
 ### 2. Simple Icons (Brand Icons)
@@ -498,28 +702,137 @@ function Modal({ isOpen, onClose, children }) {
 
 ---
 
+## Build & Development
+
+### 1. Development Scripts
+
+| Task | Command | Description |
+|------|---------|-------------|
+| Dev server | `npm run dev` | Web-only development (no Chrome APIs) |
+| Build extension | `npm run build:extension` | Build + copy manifest/icons |
+| Build ZIP | `npm run build:zip` | Create extension.zip for distribution |
+| Clean | `npm run clean` | Remove dist/ and extension.zip |
+
+### 2. Development Workflow
+
+1. **Edit files** in `src/`
+2. **Build** with `npm run build:extension`
+3. **Load** the `dist/` folder in Chrome
+4. **Test** your changes
+5. **Refresh** the extension in `chrome://extensions/`
+
+### 3. Build Output Structure
+
+```
+dist/
+├── manifest.json          # Extension manifest
+├── background.js          # Service worker
+├── content.js             # Content script
+├── popup.html / popup.js  # Popup entry
+├── options.html / options.js  # Options entry
+├── sidepanel.html / sidepanel.js  # Side panel entry
+├── theme.css              # Styles
+├── assets/                # Bundled assets
+└── icons/                 # Extension icons
+```
+
+### 4. Loading in Chrome
+
+1. Open `chrome://extensions/`
+2. Enable **Developer mode**
+3. Click **Load unpacked**
+4. Select the `dist/` folder
+
+### 5. Debugging
+
+| Context | How to Debug |
+|---------|--------------|
+| **Popup** | Right-click extension icon → Inspect popup |
+| **Options** | Open options page → F12 |
+| **Background** | `chrome://extensions/` → Service Worker → Inspect |
+| **Content Script** | Page DevTools → Sources → Content scripts |
+| **Side Panel** | Right-click in panel → Inspect |
+
+---
+
 ## Quick Reference
 
-| Task | Command |
-|------|---------|
-| Add shadcn component | `npx shadcn add <component>` |
-| Run dev server | `npm run dev` |
-| Build for production | `npm run build` |
-| Preview production build | `npm run preview` |
+### Extension APIs via Message Passing
+
+```typescript
+// From any UI context (popup/options/sidepanel)
+import { messageClient } from "@/lib/messaging"
+
+// Tab info
+const tab = await messageClient.getTabInfo()
+
+// Storage
+await messageClient.setStorage('key', value)
+const data = await messageClient.getStorage('key')
+
+// Side panel
+await messageClient.openSidePanel()
+
+// Content script
+await messageClient.highlightElement('#selector')
+await messageClient.scrollToElement('#selector')
+const { text } = await messageClient.getSelectedText()
+```
+
+### Direct Storage Access
+
+```typescript
+import { chromeStorage } from "@/lib/storage"
+
+await chromeStorage.set('key', value)
+const data = await chromeStorage.get('key')
+chromeStorage.onChanged((changes) => console.log(changes))
+```
+
+### State Management
+
+```typescript
+import { useAppStore } from "@/stores/useAppStore"
+
+const { theme, toggleTheme, settings, updateSettings } = useAppStore()
+```
 
 ---
 
 ## Summary
 
-- ✅ Use Tailwind utility classes for all styling
-- ✅ Always check shadcn/ui first before building custom components
-- ✅ Use `npx shadcn add` for new UI components
-- ✅ Use `@/` path aliases for imports
-- ✅ Use `cn()` for class merging
-- ✅ Use Lucide icons from `lucide-react`
-- ✅ Use Zustand for global state
-- ✅ Use Framer Motion for animations where appropriate
-- ✅ Modify CSS variables in `theme.css` only
-- ❌ Never add custom CSS rules to `theme.css`
-- ❌ Never create separate `.css` files for components
-- ❌ Never manually create shadcn/ui components
+### ✅ Do
+
+- Use Tailwind utility classes for all styling
+- Always check shadcn/ui first before building custom components
+- Use `npx shadcn add` for new UI components
+- Use `@/` path aliases for imports
+- Use `cn()` for class merging
+- Use Lucide icons from `lucide-react`
+- Use Zustand for global state
+- Use Framer Motion for animations
+- Use `messageClient` for Chrome API calls from UI contexts
+- Use Chrome Storage for persistence
+- Use Shadow DOM in content scripts
+- Request minimum necessary permissions
+
+### ❌ Don't
+
+- Never add custom CSS rules to `theme.css`
+- Never create separate `.css` files for components
+- Never manually create shadcn/ui components
+- Never call Chrome APIs directly from popup/options/sidepanel
+- Never modify page styles without Shadow DOM isolation
+- Never use `eval()` or `new Function()` in content scripts
+- Never request unnecessary permissions
+
+---
+
+## Chrome Extension Resources
+
+- [Chrome Extension Documentation](https://developer.chrome.com/docs/extensions/)
+- [Manifest V3 Migration Guide](https://developer.chrome.com/docs/extensions/develop/migrate)
+- [Message Passing](https://developer.chrome.com/docs/extensions/mv3/messaging/)
+- [Storage API](https://developer.chrome.com/docs/extensions/reference/storage/)
+- [Content Scripts](https://developer.chrome.com/docs/extensions/mv3/content_scripts/)
+- [Side Panel API](https://developer.chrome.com/docs/extensions/reference/sidePanel/)
