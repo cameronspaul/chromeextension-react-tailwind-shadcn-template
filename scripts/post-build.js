@@ -84,27 +84,29 @@ if (!isWatch) {
     console.log('⚠ Automatic zipping not available on Windows without additional tools.')
   }
 } else {
-  const { spawn } = await import('child_process')
   const { default: chokidar } = await import('chokidar')
 
-  console.log('🔄 Starting vite in watch mode...')
-
-  const vite = spawn('npx', ['vite', 'build', '--watch'], {
-    cwd: rootDir,
-    stdio: 'inherit',
-    shell: true,
-  })
-
-  vite.on('error', (err) => console.error('Vite error:', err))
-  vite.on('exit', (code) => {
-    if (code !== null) {
-      console.log(`Vite exited with code ${code}`)
-      process.exit(code)
-    }
-  })
+  console.log('🔄 Starting dev watch mode...')
 
   let debounceTimer = null
   let isRunning = false
+  let viteProcess = null
+
+  async function runViteBuild() {
+    const { spawn } = await import('child_process')
+    return new Promise((resolve) => {
+      if (viteProcess) viteProcess.kill()
+      viteProcess = spawn('npx', ['vite', 'build'], {
+        cwd: rootDir,
+        stdio: 'inherit',
+        shell: true,
+      })
+      viteProcess.on('exit', (code) => {
+        if (code === 0) resolve(true)
+        else resolve(false)
+      })
+    })
+  }
 
   const watcher = chokidar.watch(
     [path.join(rootDir, 'public'), path.join(rootDir, 'src'), path.join(rootDir, 'index.html')],
@@ -115,20 +117,21 @@ if (!isWatch) {
     },
   )
 
-  watcher.on('all', () => {
+  watcher.on('all', async () => {
     if (isRunning) return
     if (debounceTimer) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(async () => {
       isRunning = true
-      console.log('\n🔄 Source changed, running post-build...')
-      runPostBuild()
-      await new Promise((r) => setTimeout(r, 200))
+      console.log('\n🔄 Source changed, rebuilding...')
+      const success = await runViteBuild()
+      if (success) {
+        runPostBuild()
+      }
       isRunning = false
     }, 1000)
   })
 
   process.on('SIGINT', () => {
-    vite.kill()
     watcher.close()
     process.exit(0)
   })
