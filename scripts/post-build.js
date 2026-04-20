@@ -1,5 +1,5 @@
 /**
- * Post-build script - copies manifest.json and icons to dist folder
+ * Post-build script - copies manifest.json, icons to dist folder and creates extension.zip
  * Works on all platforms (Windows, macOS, Linux)
  */
 
@@ -74,3 +74,25 @@ if (fs.existsSync(entriesDir)) {
 }
 
 console.log('\n✅ Build complete! Load the dist/ folder in Chrome as an unpacked extension.')
+
+const { execSync } = await import('child_process')
+
+const zipPath = path.join(rootDir, 'extension.zip')
+const distPath = path.join(rootDir, 'dist')
+
+if (fs.existsSync(zipPath)) {
+  fs.unlinkSync(zipPath)
+}
+
+if (process.platform !== 'win32') {
+  try {
+    execSync(`cd "${distPath}" && zip -r "${zipPath}" . -x "*.map"`, { stdio: 'inherit' })
+    console.log('✅ Created extension.zip')
+    process.exit(0)
+  } catch {
+    console.log('⚠ Failed to create zip with native command')
+  }
+} else {
+  console.log('⚠ Automatic zipping not available on Windows without additional tools.')
+  console.log('  Please manually zip the contents of the dist/ folder.')
+}
