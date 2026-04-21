@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useAppStore, initPaymentListeners } from '../../store'
 import { PaymentStatus, PaymentButton } from '../../components/Payment'
-import { Sun, Moon, Globe, Settings } from 'lucide-react'
+import { BookmarkList } from '../../features/bookmarks/BookmarkList'
+import { Sun, Moon, Globe, Bookmark, Settings } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { motion } from 'framer-motion'
 
@@ -9,6 +10,7 @@ function SidePanel() {
   const { theme, toggleTheme } = useAppStore()
   const [currentUrl, setCurrentUrl] = useState('')
   const [currentTitle, setCurrentTitle] = useState('')
+  const [activeTab, setActiveTab] = useState<'info' | 'bookmarks'>('info')
 
   useEffect(() => {
     const root = document.documentElement
@@ -73,43 +75,72 @@ function SidePanel() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-auto p-4 space-y-4">
-        <div className="border border-border rounded-xl bg-card p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            <Globe className="h-4 w-4" />
-            Current Page
-          </h2>
-          
-          <div className="space-y-2">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Title</p>
-              <p className="text-sm font-medium line-clamp-2">{currentTitle || 'No page active'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">URL</p>
-              <p className="text-xs font-mono bg-muted p-2 rounded break-all">{currentUrl || 'No URL'}</p>
-            </div>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex-1"
-              onClick={() => currentUrl && navigator.clipboard.writeText(currentUrl)}
-              disabled={!currentUrl}
+      {/* Tab Navigation */}
+      <nav className="border-b border-border bg-card px-2 py-2">
+        <div className="flex gap-1">
+          {[
+            { id: 'info', label: 'Page', icon: Globe },
+            { id: 'bookmarks', label: 'Bookmarks', icon: Bookmark },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === tab.id
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
             >
-              Copy URL
-            </Button>
-          </div>
+              <tab.icon className="h-4 w-4" />
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          ))}
         </div>
+      </nav>
 
-        <div className="border border-border rounded-xl bg-card p-4">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-            Subscription
-          </h2>
-          <PaymentButton showTrial trialText="7-day" showLogin className="w-full" />
-        </div>
+      {/* Content */}
+      <main className="flex-1 overflow-auto">
+        {activeTab === 'info' && (
+          <div className="p-4 space-y-4">
+            <div className="border border-border rounded-xl bg-card p-4 space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                Current Page
+              </h2>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Title</p>
+                  <p className="text-sm font-medium line-clamp-2">{currentTitle || 'No page active'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">URL</p>
+                  <p className="text-xs font-mono bg-muted p-2 rounded break-all">{currentUrl || 'No URL'}</p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => currentUrl && navigator.clipboard.writeText(currentUrl)}
+                disabled={!currentUrl}
+              >
+                Copy URL
+              </Button>
+            </div>
+
+            <div className="border border-border rounded-xl bg-card p-4">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                Subscription
+              </h2>
+              <PaymentButton showTrial trialText="7-day" showLogin className="w-full" />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'bookmarks' && (
+          <div className="p-4">
+            <BookmarkList />
+          </div>
+        )}
       </main>
     </div>
   )

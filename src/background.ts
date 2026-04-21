@@ -1,4 +1,5 @@
 import ExtPay from 'extpay'
+import { handleBookmarkMessage } from './features/bookmarks/handlers'
 
 const EXTENSION_PAY_ID = import.meta.env.VITE_EXTPAY_EXTENSION_ID || 'your-extension-id'
 const extpay = ExtPay(EXTENSION_PAY_ID)
@@ -18,9 +19,14 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 })
 
-// Handle messages from popup/content/scripts
+// Feature router - each feature handles its own messages
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const handleMessage = async () => {
+    // Try feature handlers first
+    const bookmarkResult = await handleBookmarkMessage(message.type, message)
+    if (bookmarkResult !== null) return bookmarkResult
+
+    // Core messages (not feature-specific)
     switch (message.type) {
       case 'GET_TAB_INFO': {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
