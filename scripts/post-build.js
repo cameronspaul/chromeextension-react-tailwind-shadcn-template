@@ -96,7 +96,7 @@ if (!isWatch) {
     const { spawn } = await import('child_process')
     return new Promise((resolve) => {
       if (viteProcess) viteProcess.kill()
-      viteProcess = spawn('npx', ['vite', 'build'], {
+      viteProcess = spawn('npx', ['vite', 'build', '--mode', 'development'], {
         cwd: rootDir,
         stdio: 'inherit',
         shell: true,

@@ -53,9 +53,9 @@ export default defineConfig({
       },
     },
     // Don't minify during development for easier debugging
-    minify: 'esbuild',
-    // Generate source maps for debugging
-    sourcemap: process.env.NODE_ENV !== 'production',
+    minify: false,
+    // Always generate source maps for debugging
+    sourcemap: true,
     // Output to dist folder
     outDir: 'dist',
     // Empty the output directory before building
