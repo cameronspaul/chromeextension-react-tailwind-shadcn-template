@@ -57,13 +57,13 @@ import { Button } from "../../components/ui/button"
 ### 4. Chrome APIs
 
 - **Never call Chrome APIs directly** from popup/options/sidepanel
-- **Always use `messageClient`** from `@/lib/messaging` to communicate via background script
+- **Always use messaging helpers** from `@/lib/messaging` to communicate via background script
 - Background script has access to all Chrome APIs
 
 ```typescript
 // ✅ Good - from popup/options/sidepanel
-import { messageClient } from "@/lib/messaging"
-const tabInfo = await messageClient.getTabInfo()
+import { getTabInfo, openSidePanel } from "@/lib/messaging"
+const tabInfo = await getTabInfo()
 
 // ❌ Bad - directly calling Chrome APIs
 chrome.tabs.query({ active: true })
@@ -71,36 +71,33 @@ chrome.tabs.query({ active: true })
 
 ### 5. Content Scripts
 
-- **Always use Shadow DOM** for style isolation
-- Never modify page CSS directly
-- Handle SPA navigation with MutationObserver
+- Keep content scripts minimal - they inject into every page
+- Use message passing to communicate with background
+- Avoid heavy dependencies in content scripts
 
 ```typescript
-import { createShadowRootUI } from './shadow-dom'
-
-const container = document.createElement('div')
-document.body.appendChild(container)
-createShadowRootUI(container, 'MyComponent', props)
+// ✅ Good - simple content script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'GET_PAGE_INFO') {
+    sendResponse({
+      url: window.location.href,
+      title: document.title
+    })
+  }
+  return true
+})
 ```
 
 ### 6. State Management
 
-- Use Zustand store (`useAppStore`) for global state
+- Use stores from `store.ts` for global state
 - State syncs across all contexts via Chrome Storage
 - Use `partialize` to control what persists
 
 ```typescript
-persist(
-  (set, get) => ({ ... }),
-  {
-    name: 'app-store',
-    partialize: (state) => ({
-      theme: state.theme,      // persisted
-      settings: state.settings, // persisted
-      // currentTab NOT persisted
-    }),
-  }
-)
+import { useAppStore } from '@/store'
+
+const { theme, toggleTheme } = useAppStore()
 ```
 
 ## Extension Architecture
@@ -112,8 +109,9 @@ persist(
 | Popup | `src/entries/popup/` | Toolbar icon click UI |
 | Options | `src/entries/options/` | Full settings page |
 | Side Panel | `src/entries/sidepanel/` | Persistent side UI |
-| Content Script | `src/entries/content/` | Injected into web pages |
-| Background | `src/entries/background/` | Service worker |
+| Content Script | `src/content.ts` | Injected into web pages |
+| Background | `src/background.ts` | Service worker |
+| ExtPay Content | `src/extpay-content.ts` | Payment callbacks |
 
 ### Communication Flow
 
@@ -125,15 +123,6 @@ Popup/Options/Side Panel ←→ Background ←→ Content Script
 
 All communication between contexts goes through the background script.
 
-## Scripts
-
-```bash
-npm run dev             # Dev server (web only, no Chrome APIs)
-npm run build           # TypeScript build + Vite build + post-build
-npm run build:extension # Full build with manifest/icons copy
-npm run clean           # Remove dist/
-```
-
 ## Project Structure
 
 ```
@@ -142,23 +131,22 @@ public/
 └── icons/                 # Extension icons (16, 32, 48, 128px)
 
 src/
-├── entries/               # Extension entry points
-│   ├── background/        # Service worker
-│   ├── content/           # Content script
+├── entries/               # Extension UI entry points
 │   ├── options/           # Settings page
 │   ├── popup/             # Toolbar popup
 │   └── sidepanel/         # Side panel
 ├── components/
 │   ├── ui/                # shadcn/ui components
-│   └── ...                # Custom components
+│   └── Payment.tsx        # Payment components
 ├── lib/
-│   ├── messaging.ts       # Message passing system
-│   ├── storage.ts         # Chrome storage adapter
+│   ├── extpay.ts          # ExtensionPay integration
+│   ├── messaging.ts       # Message passing helpers
 │   └── utils.ts           # Utility functions (cn, etc.)
-├── stores/
-│   └── useAppStore.ts     # Zustand + Chrome storage
-├── theme.css              # Tailwind theme variables
-└── main.tsx               # Web dev entry
+├── background.ts          # Service worker
+├── content.ts             # Content script
+├── extpay-content.ts      # ExtensionPay content script
+├── store.ts               # Zustand stores
+└── theme.css              # Tailwind theme variables
 ```
 
 ## Icons
@@ -175,35 +163,42 @@ import { siReact, siVite } from 'simple-icons'
 
 ### Message Passing
 ```typescript
-import { messageClient } from "@/lib/messaging"
+import { getTabInfo, getStorage, setStorage, openSidePanel } from "@/lib/messaging"
 
-const tab = await messageClient.getTabInfo()
-await messageClient.setStorage('key', value)
-await messageClient.openSidePanel()
-await messageClient.highlightElement('#selector')
-```
-
-### Storage
-```typescript
-import { chromeStorage } from "@/lib/storage"
-
-await chromeStorage.set('key', value)
-const data = await chromeStorage.get('key')
-chromeStorage.onChanged((changes) => console.log(changes))
+const tab = await getTabInfo()
+await setStorage('key', value)
+const data = await getStorage('key')
+await openSidePanel()
 ```
 
 ### State
 ```typescript
-import { useAppStore } from "@/stores/useAppStore"
+import { useAppStore, usePaymentStore, initPaymentListeners } from "@/store"
 
-const { theme, toggleTheme, settings, updateSettings } = useAppStore()
+const { theme, toggleTheme } = useAppStore()
+const { isPaid, checkStatus } = usePaymentStore()
+
+// Initialize payment listeners in components
+useEffect(() => {
+  const cleanup = initPaymentListeners()
+  return cleanup
+}, [])
+```
+
+### Payment Components
+```tsx
+import { PaymentStatus, PaymentButton, PaymentGate } from "@/components/Payment"
+
+<PaymentStatus />                          // Badge showing free/paid status
+<PaymentButton showTrial showLogin />      // Payment buttons
+<PaymentGate>premium content</PaymentGate> // Gate content
 ```
 
 ## Don't
 
-- Add custom CSS rules to `theme.css`
+- Add custom CSS rules to `theme.css` beyond CSS variables
 - Create separate `.css` files for components
 - Manually create shadcn/ui components
 - Call Chrome APIs directly from popup/options/sidepanel
-- Modify page styles without Shadow DOM isolation
+- Add heavy dependencies to content scripts
 - Request unnecessary permissions

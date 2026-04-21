@@ -20,5 +20,10 @@ export async function setStorage(key: string, value: unknown) {
 }
 
 export async function openSidePanel() {
-  return sendMessage('OPEN_SIDE_PANEL')
+  // sidePanel.open() must be called directly from a user gesture context
+  // Sending a message to background script loses the user gesture context
+  const currentWindow = await chrome.windows.getCurrent()
+  if (currentWindow.id) {
+    await chrome.sidePanel.open({ windowId: currentWindow.id })
+  }
 }

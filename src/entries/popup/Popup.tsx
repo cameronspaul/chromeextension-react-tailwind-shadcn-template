@@ -21,8 +21,13 @@ function Popup() {
   }, [])
 
   const handleOpenSidePanel = async () => {
-    await openSidePanel()
-    window.close()
+    try {
+      await openSidePanel()
+    } catch (error) {
+      console.error('Failed to open side panel:', error)
+    } finally {
+      window.close()
+    }
   }
 
   return (
