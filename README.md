@@ -1,178 +1,170 @@
 # Chrome Extension React Template
 
-A modern, production-ready Chrome extension template built with **React 19**, **Vite**, **Tailwind CSS v4**, and **shadcn/ui**. This template provides a complete architecture for building Chrome extensions using Manifest V3 with full React support across all extension contexts.
+A modern Chrome extension template with **React 19**, **Vite**, **Tailwind CSS v4**, and **shadcn/ui**.
 
 ## Features
 
-- ⚛️ **React 19** - Latest React with concurrent features and automatic batching
-- ⚡ **Vite** - Lightning-fast development and optimized production builds
-- 🎨 **Tailwind CSS v4** - Modern utility-first styling with CSS-first configuration
-- 🧩 **shadcn/ui** - Beautiful, accessible component primitives
-- 📦 **Zustand** - Simple state management with Chrome storage persistence
-- 🔄 **Chrome Storage API** - Persistent state across all extension contexts
-- 📡 **Message Passing** - Simple communication between contexts
-- 🎯 **Manifest V3** - Latest Chrome extension standard
-- 🌗 **Theme Support** - Built-in light/dark mode with CSS variables
-- 📝 **TypeScript** - Full type safety throughout
-- 💳 **ExtensionPay** - Built-in monetization with payments, trials & subscriptions
+- ⚛️ React 19 + TypeScript
+- ⚡ Vite for fast builds
+- 🎨 Tailwind CSS v4 + shadcn/ui
+- 📦 Zustand + Chrome Storage
+- 📡 Simple message passing
+- 🎯 Manifest V3
+- 🌗 Light/dark themes
+- 💳 ExtensionPay integration
+- 🧩 **Feature-based architecture** - add features without bloating core files
 
 ## Project Structure
 
 ```
-├── public/
-│   ├── manifest.json          # Chrome extension manifest
-│   └── icons/                 # Extension icons (16, 32, 48, 128px PNGs)
-├── src/
-│   ├── entries/               # Extension UI entry points
-│   │   ├── options/           # Options/settings page
-│   │   ├── popup/             # Popup UI (toolbar icon click)
-│   │   └── sidepanel/         # Side panel
-│   ├── components/
-│   │   ├── ui/                # shadcn/ui components
-│   │   └── Payment.tsx        # Payment components (ExtPay)
-│   ├── lib/                   # Utilities
-│   │   ├── extpay.ts          # ExtensionPay integration
-│   │   ├── messaging.ts       # Message passing helpers
-│   │   └── utils.ts           # Utility functions
-│   ├── background.ts          # Service worker (background script)
-│   ├── content.ts             # Content script (injected into pages)
-│   ├── extpay-content.ts      # ExtensionPay content script
-│   ├── store.ts               # Zustand stores (app + payment)
-│   └── theme.css              # Tailwind theme configuration
-├── vite.config.ts             # Vite configuration
-└── package.json               # Dependencies & scripts
+src/
+├── entries/          # UI entry points (popup, options, sidepanel)
+├── features/         # Feature modules - each self-contained
+│   └── bookmarks/
+│       ├── types.ts
+│       ├── handlers.ts    # Background message handlers
+│       ├── BookmarkList.tsx
+│       └── index.ts
+├── components/       # Shared components
+├── lib/             # Utilities
+├── background.ts    # Service worker (stays small!)
+├── content.ts       # Content script
+└── store.ts         # Zustand stores
 ```
 
 ## Quick Start
 
-### 1. Install Dependencies
-
 ```bash
 npm install
-```
-
-### 2. Build the Extension
-
-```bash
 npm run build
 ```
 
-This creates a `dist/` folder with all extension files.
+Load `dist/` folder in `chrome://extensions/` (Developer mode → Load unpacked).
 
-### 3. Load in Chrome
+## Adding Features
 
-1. Open Chrome and navigate to `chrome://extensions/`
-2. Enable **Developer mode** (toggle in top right)
-3. Click **Load unpacked**
-4. Select your `dist/` folder
+This template uses **feature-based architecture**. Each feature is self-contained in `src/features/<name>/`.
 
-### 4. Using the Extension
+### Example: Adding a History Feature
 
-- **Click the extension icon** → Opens Popup
-- **Right-click icon → Options** → Opens Settings Page
-- **Ctrl+Shift+U** (or Cmd+Shift+U on Mac) → Opens Side Panel
+Create `src/features/history/`:
 
-### Available Scripts
-
-```bash
-npm run build           # Build extension files
-npm run dev             # Dev server (web only, no Chrome APIs)
-npm run clean           # Remove dist/
+**types.ts**
+```typescript
+export interface HistoryItem {
+  id: string
+  url: string
+  title: string
+  visitedAt: number
+}
 ```
 
-## Usage Guide
-
-### Extension Entry Points
-
-The template provides 6 extension entry points:
-
-1. **Popup** (`src/entries/popup/`)
-   - Shown when clicking the extension icon in the toolbar
-   - Perfect for quick actions and status displays
-   - Size: ~380x500px recommended
-
-2. **Options Page** (`src/entries/options/`)
-   - Full settings page accessible via right-click → Options
-   - Or programmatically: `chrome.runtime.openOptionsPage()`
-
-3. **Side Panel** (`src/entries/sidepanel/`)
-   - Chrome's side panel feature - persistent UI alongside web pages
-   - Open with `chrome.sidePanel.open()`
-
-4. **Background Script** (`src/background.ts`)
-   - Service worker for Manifest V3
-   - Handles events, message passing, storage
-   - Cannot access DOM
-
-5. **Content Script** (`src/content.ts`)
-   - Injected into web pages (configurable in manifest)
-   - Can read/modify page DOM
-
-6. **ExtPay Content Script** (`src/extpay-content.ts`)
-   - Required for ExtensionPay payment callbacks
-   - Runs on extensionpay.com pages
-
-### State Management
-
-State is automatically synced across all contexts using Chrome Storage:
-
+**handlers.ts**
 ```typescript
-import { useAppStore, usePaymentStore } from './store'
+export async function handleHistoryMessage(type: string, payload: unknown) {
+  switch (type) {
+    case 'ADD_HISTORY': {
+      const { url, title } = payload as { url: string; title: string }
+      const item = { id: crypto.randomUUID(), url, title, visitedAt: Date.now() }
+      const existing = await chrome.storage.local.get('history')
+      const history = [item, ...(existing.history || [])].slice(0, 100)
+      await chrome.storage.local.set({ history })
+      return { success: true, item }
+    }
+    case 'GET_HISTORY': {
+      const data = await chrome.storage.local.get('history')
+      return { history: data.history || [] }
+    }
+    default:
+      return null  // Not handled
+  }
+}
+```
 
-function MyComponent() {
-  const { theme, toggleTheme } = useAppStore()
-  const { isPaid, checkStatus } = usePaymentStore()
+**HistoryList.tsx**
+```typescript
+import { useState, useEffect } from 'react'
+import type { HistoryItem } from './types'
+
+export function HistoryList() {
+  const [history, setHistory] = useState<HistoryItem[]>([])
+
+  useEffect(() => {
+    chrome.runtime.sendMessage({ type: 'GET_HISTORY' })
+      .then(r => setHistory(r.history || []))
+  }, [])
 
   return (
-    <button onClick={toggleTheme}>
-      Current theme: {theme}
-    </button>
+    <div>
+      {history.map(item => (
+        <a key={item.id} href={item.url}>{item.title}</a>
+      ))}
+    </div>
   )
 }
 ```
 
-### Message Passing
-
-Communicate between contexts with simple messages:
-
+**index.ts**
 ```typescript
-import { getTabInfo, setStorage, openSidePanel } from './lib/messaging'
+export { handleHistoryMessage } from './handlers'
+export { HistoryList } from './HistoryList'
+```
 
-// Get current tab info (goes through background)
-const tabInfo = await getTabInfo()
+**Wire up in background.ts** - add just 2 lines:
+```typescript
+import { handleHistoryMessage } from './features/history/handlers'
 
-// Access storage
-await setStorage('settings', { theme: 'dark' })
-const settings = await getStorage('settings')
+// In message listener:
+const result = await handleHistoryMessage(message.type, message)
+if (result !== null) return result
+```
 
-// Open side panel
+**Use in UI:**
+```typescript
+import { HistoryList } from '@/features/history/HistoryList'
+```
+
+### Why This Pattern?
+
+- **background.ts stays small** - just imports handlers
+- **Features are isolated** - everything in one folder
+- **Easy to add/remove** - create/delete folder + 2 lines in background.ts
+- **No merge conflicts** - developers work on separate feature folders
+
+### Guidelines
+
+- Keep files small: `types.ts` < 50 lines, `handlers.ts` < 100 lines, UI < 150 lines
+- Split large features: `features/bookmarks/handlers/crud.ts`, `features/bookmarks/handlers/sync.ts`
+- Features don't import from each other - use message passing
+
+## Usage
+
+### Message Passing
+```typescript
+import { getTabInfo, setStorage, openSidePanel } from '@/lib/messaging'
+
+const tab = await getTabInfo()
+await setStorage('key', value)
 await openSidePanel()
 ```
 
-### Payment Integration
+### State
+```typescript
+import { useAppStore, usePaymentStore } from '@/store'
 
-The template includes ExtensionPay for monetization:
+const { theme, toggleTheme } = useAppStore()
+const { isPaid } = usePaymentStore()
+```
 
+### Payment Components
 ```tsx
-import { PaymentStatus, PaymentButton, PaymentGate } from './components/Payment'
+import { PaymentStatus, PaymentButton, PaymentGate } from '@/components/Payment'
 
-// Show payment status badge
 <PaymentStatus />
-
-// Payment button with trial option
 <PaymentButton showTrial trialText="7-day" />
-
-// Gate content behind payment
-<PaymentGate>
-  <PremiumFeature />
-</PaymentGate>
-```
-
-Configure your ExtensionPay ID in `.env`:
-```
-VITE_EXTPAY_EXTENSION_ID=your-extension-id
+<PaymentGate>premium content</PaymentGate>
 ```
 
 ## License
 
-MIT License - feel free to use this template for any project!
+MIT License

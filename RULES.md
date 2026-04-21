@@ -1,163 +1,113 @@
 # Project Rules
 
-This document defines the coding standards for this **Chrome Extension React Template** built with React + Vite + Tailwind CSS + shadcn/ui.
+Coding standards for this Chrome Extension React Template.
 
 ## Tech Stack
 
-| Category | Technology |
-|----------|------------|
-| Framework | React 19 |
-| Build Tool | Vite |
-| Styling | Tailwind CSS v4 |
-| Components | shadcn/ui (Radix UI) |
-| State | Zustand + Chrome Storage |
-| Animation | Framer Motion |
-| Language | TypeScript |
+- React 19 + TypeScript
+- Vite
+- Tailwind CSS v4
+- shadcn/ui
+- Zustand + Chrome Storage
 
-## Core Principles
+## Core Rules
 
 ### 1. Styling
-
-- **Use Tailwind utility classes for all styling** - never write custom CSS in components
-- **Only modify CSS variables** in `theme.css` (`:root` and `.dark`)
-- **No separate `.css` files** for component styles
-
-```tsx
-// ✅ Good
-<div className="flex items-center p-4 bg-card rounded-lg">
-
-// ❌ Bad
-<div className="my-custom-class">
-```
+- Use Tailwind utility classes only
+- Modify only CSS variables in `theme.css`
+- No separate `.css` files
 
 ### 2. Components
-
-- **Always check shadcn/ui first** before building custom components
-- **Use the CLI to add components:**
-```bash
-npx shadcn add button
-npx shadcn add card dialog input
-```
-- **Never manually create** shadcn/ui components
+- Use shadcn/ui CLI: `npx shadcn add button`
+- Never manually create shadcn components
 
 ### 3. Imports
-
-- Use `@/` path aliases for all imports
+- Use `@/` path aliases
 - Use `cn()` from `@/lib/utils` for class merging
 
-```tsx
-// ✅ Good
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-
-// ❌ Bad
-import { Button } from "../../components/ui/button"
-```
-
 ### 4. Chrome APIs
-
-- **Never call Chrome APIs directly** from popup/options/sidepanel
-- **Always use messaging helpers** from `@/lib/messaging` to communicate via background script
-- Background script has access to all Chrome APIs
+- Never call Chrome APIs directly from popup/options/sidepanel
+- Always use messaging via background script
 
 ```typescript
-// ✅ Good - from popup/options/sidepanel
-import { getTabInfo, openSidePanel } from "@/lib/messaging"
-const tabInfo = await getTabInfo()
+// ✅ Good
+import { getTabInfo } from "@/lib/messaging"
+const tab = await getTabInfo()
 
-// ❌ Bad - directly calling Chrome APIs
+// ❌ Bad
 chrome.tabs.query({ active: true })
 ```
 
-### 5. Content Scripts
+---
 
-- Keep content scripts minimal - they inject into every page
-- Use message passing to communicate with background
-- Avoid heavy dependencies in content scripts
+## Feature-Based Architecture
 
+Organize by **feature**, not by type. Each feature lives in `src/features/<name>/`.
+
+### Feature Folder Structure
+```
+features/bookmarks/
+├── types.ts              # Data structures
+├── handlers.ts           # Background message handlers
+├── BookmarkList.tsx      # UI component
+└── index.ts              # Public exports
+```
+
+### Key Rules
+
+1. **background.ts stays small** - Only imports handlers, no feature logic
+2. **Handlers return null if not handled** - Allows chaining handlers
+3. **One feature = one folder** - Don't scatter code across codebase
+4. **Keep files small** - Split if: types > 50 lines, handlers > 100 lines, UI > 150 lines
+5. **Features don't import each other** - Use message passing
+
+### Example Handler
 ```typescript
-// ✅ Good - simple content script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'GET_PAGE_INFO') {
-    sendResponse({
-      url: window.location.href,
-      title: document.title
-    })
+export async function handleBookmarkMessage(type: string, payload: unknown) {
+  switch (type) {
+    case 'ADD_BOOKMARK':
+      // ... handle
+      return { success: true }
+    case 'GET_BOOKMARKS':
+      // ... handle
+      return { bookmarks: [] }
+    default:
+      return null  // Not for this feature
   }
-  return true
+}
+```
+
+### Adding a Feature
+
+1. Create folder `src/features/<name>/`
+2. Add `types.ts`, `handlers.ts`, UI component, `index.ts`
+3. Import handler in `background.ts` (2 lines)
+4. Use component where needed
+
+### Background.ts Pattern
+```typescript
+import { handleBookmarkMessage } from './features/bookmarks/handlers'
+import { handleHistoryMessage } from './features/history/handlers'
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const handleMessage = async () => {
+    // Try each feature
+    const result = await handleBookmarkMessage(message.type, message)
+    if (result !== null) return result
+
+    const result2 = await handleHistoryMessage(message.type, message)
+    if (result2 !== null) return result2
+
+    // Core messages
+    switch (message.type) {
+      case 'GET_TAB_INFO': { /* ... */ }
+    }
+  }
+  // ...
 })
 ```
 
-### 6. State Management
-
-- Use stores from `store.ts` for global state
-- State syncs across all contexts via Chrome Storage
-- Use `partialize` to control what persists
-
-```typescript
-import { useAppStore } from '@/store'
-
-const { theme, toggleTheme } = useAppStore()
-```
-
-## Extension Architecture
-
-### Entry Points
-
-| Context | Location | Purpose |
-|---------|----------|---------|
-| Popup | `src/entries/popup/` | Toolbar icon click UI |
-| Options | `src/entries/options/` | Full settings page |
-| Side Panel | `src/entries/sidepanel/` | Persistent side UI |
-| Content Script | `src/content.ts` | Injected into web pages |
-| Background | `src/background.ts` | Service worker |
-| ExtPay Content | `src/extpay-content.ts` | Payment callbacks |
-
-### Communication Flow
-
-```
-Popup/Options/Side Panel ←→ Background ←→ Content Script
-                                    ↓
-                              Web Page
-```
-
-All communication between contexts goes through the background script.
-
-## Project Structure
-
-```
-public/
-├── manifest.json          # Chrome extension manifest
-└── icons/                 # Extension icons (16, 32, 48, 128px)
-
-src/
-├── entries/               # Extension UI entry points
-│   ├── options/           # Settings page
-│   ├── popup/             # Toolbar popup
-│   └── sidepanel/         # Side panel
-├── components/
-│   ├── ui/                # shadcn/ui components
-│   └── Payment.tsx        # Payment components
-├── lib/
-│   ├── extpay.ts          # ExtensionPay integration
-│   ├── messaging.ts       # Message passing helpers
-│   └── utils.ts           # Utility functions (cn, etc.)
-├── background.ts          # Service worker
-├── content.ts             # Content script
-├── extpay-content.ts      # ExtensionPay content script
-├── store.ts               # Zustand stores
-└── theme.css              # Tailwind theme variables
-```
-
-## Icons
-
-- **Lucide React** for UI icons
-- **Simple Icons** for brand logos
-
-```tsx
-import { Sun, Moon, Settings } from 'lucide-react'
-import { siReact, siVite } from 'simple-icons'
-```
+---
 
 ## Quick Reference
 
@@ -167,8 +117,6 @@ import { getTabInfo, getStorage, setStorage, openSidePanel } from "@/lib/messagi
 
 const tab = await getTabInfo()
 await setStorage('key', value)
-const data = await getStorage('key')
-await openSidePanel()
 ```
 
 ### State
@@ -176,29 +124,21 @@ await openSidePanel()
 import { useAppStore, usePaymentStore, initPaymentListeners } from "@/store"
 
 const { theme, toggleTheme } = useAppStore()
-const { isPaid, checkStatus } = usePaymentStore()
-
-// Initialize payment listeners in components
-useEffect(() => {
-  const cleanup = initPaymentListeners()
-  return cleanup
-}, [])
 ```
 
-### Payment Components
+### Payment
 ```tsx
 import { PaymentStatus, PaymentButton, PaymentGate } from "@/components/Payment"
 
-<PaymentStatus />                          // Badge showing free/paid status
-<PaymentButton showTrial showLogin />      // Payment buttons
-<PaymentGate>premium content</PaymentGate> // Gate content
+<PaymentStatus />
+<PaymentButton showTrial />
+<PaymentGate>premium content</PaymentGate>
 ```
 
 ## Don't
 
-- Add custom CSS rules to `theme.css` beyond CSS variables
-- Create separate `.css` files for components
-- Manually create shadcn/ui components
-- Call Chrome APIs directly from popup/options/sidepanel
-- Add heavy dependencies to content scripts
-- Request unnecessary permissions
+- Put feature logic in `background.ts` (use handlers!)
+- Let files grow too large (split them!)
+- Import between features (use message passing!)
+- Add custom CSS to `theme.css` (use Tailwind!)
+- Call Chrome APIs directly from UI contexts
