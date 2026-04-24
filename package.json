@@ -5,9 +5,9 @@
   "type": "module",
   "description": "A modern Chrome extension built with React, Vite, Tailwind CSS, and shadcn/ui",
   "scripts": {
-    "dev": "node scripts/post-build.js --watch",
-    "build": "tsc -b && vite build && node scripts/post-build.js",
-    "build:dev": "tsc -b && vite build --mode development && node scripts/post-build.js",
+    "dev": "tsc -b && node scripts/build.js --watch",
+    "build": "tsc -b && node scripts/build.js",
+    "prod": "tsc -b && node scripts/build.js --production",
     "icons": "node scripts/convert-icon.js"
   },
   "dependencies": {
@@ -34,6 +34,7 @@
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.4",
+    "adm-zip": "^0.5.17",
     "chokidar": "^4.0.3",
     "sharp": "^0.34.5",
     "to-ico": "^1.1.5",
