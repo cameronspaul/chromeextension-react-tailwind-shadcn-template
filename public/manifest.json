@@ -6,14 +6,10 @@
   "permissions": [
     "storage",
     "activeTab",
-    "scripting",
     "tabs",
     "sidePanel"
   ],
-  "host_permissions": [
-    "<all_urls>",
-    "https://extensionpay.com/*"
-  ],
+  "host_permissions": [],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
