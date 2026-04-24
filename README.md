@@ -141,10 +141,17 @@ import { HistoryList } from '@/features/history/HistoryList'
 
 ### Message Passing
 ```typescript
-import { getTabInfo, setStorage, openSidePanel } from '@/lib/messaging'
+import { getTabInfo, setStorage } from '@/lib/messaging'
 
 const tab = await getTabInfo()
 await setStorage('key', value)
+```
+
+### Side Panel
+```typescript
+// openSidePanel() must be called directly from a user gesture context
+// It's exported separately from messaging.ts
+import { openSidePanel } from '@/lib/messaging'
 await openSidePanel()
 ```
 

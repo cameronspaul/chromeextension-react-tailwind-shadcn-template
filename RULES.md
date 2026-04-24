@@ -113,10 +113,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 ### Message Passing
 ```typescript
-import { getTabInfo, getStorage, setStorage, openSidePanel } from "@/lib/messaging"
+import { getTabInfo, getStorage, setStorage } from "@/lib/messaging"
 
 const tab = await getTabInfo()
 await setStorage('key', value)
+const data = await getStorage<MyType>('key')
+```
+
+### Side Panel
+```typescript
+// openSidePanel() must be called directly from UI (requires user gesture)
+// It's NOT in messaging.ts - import directly where needed
+import { openSidePanel } from "@/lib/messaging"
+await openSidePanel()
 ```
 
 ### State
