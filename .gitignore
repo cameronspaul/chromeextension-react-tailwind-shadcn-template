@@ -40,7 +40,7 @@ temp/
 .temp/
 
 # Chrome Extension
-extension.zip
+*.zip
 *.crx
 *.pem
 
