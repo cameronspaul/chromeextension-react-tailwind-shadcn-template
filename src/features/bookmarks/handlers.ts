@@ -16,7 +16,7 @@ export async function handleBookmarkMessage(type: string, payload: unknown) {
         createdAt: Date.now()
       }
 
-      const existing = await chrome.storage.local.get('bookmarks')
+      const existing = await chrome.storage.local.get('bookmarks') as { bookmarks?: Bookmark[] }
       const bookmarks = [...(existing.bookmarks || []), bookmark]
       await chrome.storage.local.set({ bookmarks })
 
@@ -25,7 +25,7 @@ export async function handleBookmarkMessage(type: string, payload: unknown) {
     }
 
     case 'GET_BOOKMARKS': {
-      const data = await chrome.storage.local.get('bookmarks')
+      const data = await chrome.storage.local.get('bookmarks') as { bookmarks?: Bookmark[] }
       console.log('[Bookmark Handler] Getting bookmarks:', data.bookmarks?.length || 0)
       return { bookmarks: data.bookmarks || [] }
     }
@@ -34,7 +34,7 @@ export async function handleBookmarkMessage(type: string, payload: unknown) {
       const { id } = payload as { id: string }
       console.log('[Bookmark Handler] Deleting bookmark:', id)
 
-      const data = await chrome.storage.local.get('bookmarks')
+      const data = await chrome.storage.local.get('bookmarks') as { bookmarks?: Bookmark[] }
       const bookmarks = (data.bookmarks || []).filter((b: Bookmark) => b.id !== id)
       await chrome.storage.local.set({ bookmarks })
 

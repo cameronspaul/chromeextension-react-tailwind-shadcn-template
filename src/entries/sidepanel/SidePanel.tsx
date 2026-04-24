@@ -33,7 +33,7 @@ function SidePanel() {
     }
     getCurrentTab()
 
-    const listener = (_tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) => {
+    const listener = (_tabId: number, changeInfo: { url?: string; status?: string }, tab: chrome.tabs.Tab) => {
       if (tab.active && changeInfo.url) {
         setCurrentUrl(changeInfo.url)
         setCurrentTitle(tab.title || '')
