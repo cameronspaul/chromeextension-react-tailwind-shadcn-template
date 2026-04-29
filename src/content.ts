@@ -1,5 +1,3 @@
-import './theme.css'
-
 const SCRIPT_ID = Math.random().toString(36).slice(2, 9)
 console.log(`[Content Script ${SCRIPT_ID}] Initialized`)
 
